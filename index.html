@@ -5,7 +5,13 @@
   <title>Maska ČR + Interaktivní kraje</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>html,body,#map{height:100%;margin:0;padding:0;}</style>
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
 </head>
 <body>
   <div id="map"></div>
@@ -15,12 +21,13 @@
 
   <script>
     const map = L.map('map').setView([49.8, 15.5], 8);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
       maxZoom: 19
     }).addTo(map);
 
-    // 1️⃣ Načtení hranice ČR a masky
+    // 1️⃣ Maska ČR a její obrys
     fetch('https://raw.githubusercontent.com/tvaliasek/CZ-GeoJSON/master/CZGeoJSON.json')
       .then(res => res.json())
       .then(czechFeature => {
@@ -34,7 +41,7 @@
         L.geoJSON(mask, {
           style: {
             fillColor: 'white',
-            fillOpacity: 1,      // 💡 Plně bílá maska
+            fillOpacity: 1,
             stroke: false,
             interactive: false
           }
@@ -50,7 +57,7 @@
         }).addTo(map);
       });
 
-    // 2️⃣ Interaktivní kraje
+    // 2️⃣ Interaktivní kraje s názvem v popupu
     fetch('https://raw.githubusercontent.com/siwekm/czech-geojson/master/kraje.json')
       .then(res => res.json())
       .then(kraje => {
@@ -61,14 +68,18 @@
             fillOpacity: 0.2
           },
           onEachFeature: (feature, layer) => {
-            const nazev = feature.properties.OB_KOD
-              ? `${feature.properties.OB_KOD} - ${feature.properties.NAZ_CZNUTS3}`
-              : feature.properties.NAZ_CZNUTS3 || 'Kraj';
+            const props = feature.properties;
+            const nazev =
+              props.NAZ_KRAJ || props.NAZ_CZNUTS3 || props.name || 'Neznámý kraj';
+
             layer.on('click', () => {
               layer.bindPopup(`<strong>${nazev}</strong>`).openPopup();
             });
           }
         }).addTo(map);
+      })
+      .catch(error => {
+        console.error("Chyba při načítání nebo zpracování dat krajů:", error);
       });
   </script>
 </body>
