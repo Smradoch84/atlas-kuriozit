@@ -46,6 +46,35 @@
     minZoom: 7,
     maxZoom: 14,
   }).setView([49.8, 15.5], 8);
+    // GeoJSON hranice ČR (zjednodušené)
+const czechRepublic = {
+  "type": "Polygon",
+  "coordinates": [[
+    [12.09, 51.06],
+    [18.87, 51.06],
+    [18.87, 48.55],
+    [12.09, 48.55],
+    [12.09, 51.06]
+  ]]
+};
+
+// Polygon pokrývající celý svět (podobný obdélník, co zahrnuje vše)
+const worldBounds = [
+  [90, -180],
+  [90, 180],
+  [-90, 180],
+  [-90, -180],
+  [90, -180]
+];
+
+// Vytvoříme polygon se „dírou“ v místě ČR
+const mask = L.polygon([worldBounds, czechRepublic.coordinates[0]], {
+  color: '#ffffff',
+  fillColor: '#ffffff',
+  fillOpacity: 1,
+  stroke: false,
+  interactive: false
+}).addTo(map);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
