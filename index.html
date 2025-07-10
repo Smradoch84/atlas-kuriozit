@@ -3,84 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mapa Kuriozit - ČÚZK podklady</title>
+  <title>Mapa ČR s Geoportal WMS</title>
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
   <style>
     body { margin: 0; font-family: sans-serif; }
-    #map { 
-      height: 100vh; 
-      background: white;
-    }
-    .form-popup {
-      position: fixed;
-      top: 10%;
-      left: 50%;
-      transform: translate(-50%, 0);
-      background: white;
-      padding: 1em;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      z-index: 999;
-    }
+    #map { height: 100vh; }
   </style>
 </head>
 <body>
   <div id="map"></div>
-
-  <div id="form" class="form-popup" style="display:none;">
-    <h3>Zadej délku jazyka 😛</h3>
-    <input type="number" id="input-length" placeholder="v cm" />
-    <button onclick="submitData()">Odeslat</button>
-    <button onclick="closeForm()">Zavřít</button>
-  </div>
-
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <script>
-    const map = L.map('map', {
-      maxBounds: [
-        [48.5, 12],
-        [51.1, 19.0]
-      ],
-      maxBoundsViscosity: 1.0,
-      minZoom: 7,
-      maxZoom: 14,
-    }).setView([49.8, 15.5], 8);
+    const map = L.map('map').setView([49.8, 15.5], 8);
 
-    // Přidání ortofotomapy ČÚZK (WMS)
-    L.tileLayer.wms('https://ags.cuzk.cz/arcgis/services/DMR4_Orto/MapServer/WMSServer?', {
-      layers: '0',
+    L.tileLayer.wms('https://geoportal.gov.cz/geowebcache/service/wms?', {
+      layers: 'ZABAGED_OBCE_P',
       format: 'image/png',
-      transparent: false,
-      attribution: '© ČÚZK'
+      transparent: true,
+      attribution: '© Geoportal',
+      version: '1.3.0',
     }).addTo(map);
-
-    let selectedLocation = null;
-
-    function openForm(latlng) {
-      selectedLocation = latlng;
-      document.getElementById("form").style.display = "block";
-    }
-
-    function closeForm() {
-      selectedLocation = null;
-      document.getElementById("form").style.display = "none";
-    }
-
-    function submitData() {
-      const length = document.getElementById("input-length").value;
-      if (!length || !selectedLocation) return;
-      L.marker(selectedLocation).addTo(map)
-        .bindPopup(`Délka jazyka: ${length} cm`).openPopup();
-      closeForm();
-    }
-
-    map.on('click', function(e) {
-      openForm(e.latlng);
-    });
   </script>
 </body>
 </html>
