@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <title>Maska ČR + Interaktivní kraje</title>
+  <title>Maska ČR + Interaktivní kraje - Debug</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>html,body,#map{height:100%;margin:0;padding:0;}</style>
@@ -20,7 +20,7 @@
       maxZoom: 19
     }).addTo(map);
 
-    // Načtení hranice ČR a masky
+    // Načtení hranic ČR a masky
     fetch('https://raw.githubusercontent.com/tvaliasek/CZ-GeoJSON/master/CZGeoJSON.json')
       .then(res => res.json())
       .then(czechFeature => {
@@ -50,29 +50,34 @@
         }).addTo(map);
       });
 
-    // Interaktivní kraje s debugem
+    // Načtení krajů
     fetch('https://raw.githubusercontent.com/martin-ruzicka/czech-regions-geojson/main/kraje.json')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Síťová odpověď nebyla OK');
+        return res.json();
+      })
       .then(kraje => {
         console.log('Kraje data:', kraje);
 
         L.geoJSON(kraje, {
           style: {
-            color: '#0074D9',
+            color: 'red',
             weight: 2,
-            fillOpacity: 0.3
+            fillOpacity: 0
           },
           onEachFeature: (feature, layer) => {
             console.log('Kraj properties:', feature.properties);
 
-            // Zkusíme několik možných názvů vlastností pro název kraje
-            const nazev = feature.properties.NAZ_CZNUTS3 || feature.properties.NAZEV || feature.properties.name || 'Kraj';
-
+            const nazev = feature.properties.NAZ_CZNUTS3 || feature.properties.NAZEV || feature.properties.name || 'Neznámý kraj';
             layer.on('click', () => {
               layer.bindPopup(`<strong>${nazev}</strong>`).openPopup();
             });
           }
         }).addTo(map);
+      })
+      .catch(err => {
+        console.error('Chyba při načítání krajů:', err);
+        alert('Chyba při načítání krajů: ' + err.message);
       });
   </script>
 </body>
