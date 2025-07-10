@@ -2,24 +2,39 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mapa ČR - hranice obcí</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mapa ČR s OSM a Geoportal WMS</title>
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
   <style>
-    body { margin: 0; font-family: sans-serif; }
+    body, html { margin: 0; height: 100%; }
     #map { height: 100vh; }
   </style>
 </head>
 <body>
   <div id="map"></div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([49.8, 15.5], 8);
+    const map = L.map('map', {
+      minZoom: 7,
+      maxZoom: 14,
+      maxBounds: [
+        [48.5, 12],
+        [51.1, 19.0]
+      ],
+      maxBoundsViscosity: 1.0
+    }).setView([49.8, 15.5], 8);
 
-    // Vrstva s hranicemi obcí (linie)
+    // OpenStreetMap podklad
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // Geoportal hranice obcí (linie)
     L.tileLayer.wms('https://geoportal.gov.cz/geowebcache/service/wms?', {
       layers: 'ZABAGED_OBCE_L',
       format: 'image/png',
@@ -27,24 +42,6 @@
       attribution: '© Geoportal',
       version: '1.3.0',
     }).addTo(map);
-
-    // Výplň
-L.tileLayer.wms('https://geoportal.gov.cz/geowebcache/service/wms?', {
-  layers: 'ZABAGED_OBCE_P',
-  format: 'image/png',
-  transparent: true,
-  attribution: '© Geoportal',
-  version: '1.3.0',
-}).addTo(map);
-
-// Hranice
-L.tileLayer.wms('https://geoportal.gov.cz/geowebcache/service/wms?', {
-  layers: 'ZABAGED_OBCE_L',
-  format: 'image/png',
-  transparent: true,
-  attribution: '© Geoportal',
-  version: '1.3.0',
-}).addTo(map);
   </script>
 </body>
 </html>
