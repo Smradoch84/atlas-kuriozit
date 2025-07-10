@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mapa ČR s OSM a Geoportal WMS</title>
+  <title>Mapa ČR s maskou</title>
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
   <style>
-    body, html { margin: 0; height: 100%; }
-    #map { height: 100vh; }
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
   </style>
 </head>
 <body>
@@ -23,15 +26,15 @@
       maxZoom: 14,
       maxBounds: [
         [48.5, 12],
-        [51.1, 19.0]
+        [51.1, 19]
       ],
       maxBoundsViscosity: 1.0
     }).setView([49.8, 15.5], 8);
 
-    // OpenStreetMap podklad
+    // Podklad OSM
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
       maxZoom: 19,
-      attribution: '© OpenStreetMap'
     }).addTo(map);
 
     // Geoportal hranice obcí (linie)
@@ -42,6 +45,40 @@
       attribution: '© Geoportal',
       version: '1.3.0',
     }).addTo(map);
+
+    // GeoJSON hranice ČR (zjednodušené)
+    const czechRepublicGeoJSON = {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [12.09, 51.06], [18.87, 51.06], [18.87, 48.55], [12.09, 48.55], [12.09, 51.06]
+        ]]
+      }
+    };
+
+    // Velký polygon - celý svět (pro masku)
+    const worldCoords = [
+      [90, -180],
+      [90, 180],
+      [-90, 180],
+      [-90, -180],
+      [90, -180]
+    ];
+
+    // Extrahujeme z GeoJSON souřadnice ČR pro "díru"
+    const czechCoords = czechRepublicGeoJSON.geometry.coordinates[0];
+
+    // Vytvoříme polygon s dírou - maska mimo ČR
+    const mask = L.polygon([worldCoords, czechCoords], {
+      color: 'white',
+      fillColor: 'white',
+      fillOpacity: 0.8,
+      stroke: false,
+      interactive: false
+    }).addTo(map);
+
   </script>
 </body>
 </html>
