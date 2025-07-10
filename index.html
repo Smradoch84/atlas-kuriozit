@@ -61,7 +61,7 @@
             fillOpacity: 0.2
           },
           onEachFeature: (feature, layer) => {
-            console.log('Kraj properties:', feature.properties); // vypíše do konzole
+            console.log('Kraj properties:', JSON.stringify(feature.properties)); // vypíše do konzole
             const props = feature.properties;
             // zkusíme několik možných klíčů pro název
             const nazev = props.NAZ_CZNUTS3 || props.NAZEV || props.nazev || 'Neznámý kraj';
