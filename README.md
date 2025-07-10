@@ -1,0 +1,2 @@
+# atlas-kuriozit
+Mapa kuriozit
