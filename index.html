@@ -69,8 +69,7 @@
           },
           onEachFeature: (feature, layer) => {
             const props = feature.properties;
-            const nazev =
-              props.NAZ_KRAJ || props.NAZ_CZNUTS3 || props.name || 'Neznámý kraj';
+            const nazev = props.nazev || 'Neznámý kraj';
 
             layer.on('click', () => {
               layer.bindPopup(`<strong>${nazev}</strong>`).openPopup();
