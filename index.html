@@ -68,17 +68,15 @@
     ];
 
     // Extrahujeme z GeoJSON souřadnice ČR pro "díru"
-    const czechCoords = czechRepublicGeoJSON.geometry.coordinates[0];
+   const czechCoords = czechRepublicGeoJSON.geometry.coordinates[0].slice().reverse();
 
-    // Vytvoříme polygon s dírou - maska mimo ČR
-    const mask = L.polygon([worldCoords, czechCoords], {
-      color: 'white',
-      fillColor: 'white',
-      fillOpacity: 0.8,
-      stroke: false,
-      interactive: false
-    }).addTo(map);
-
+const mask = L.polygon([worldCoords, czechCoords], {
+  color: 'white',
+  fillColor: 'white',
+  fillOpacity: 0.8,
+  stroke: false,
+  interactive: false
+}).addTo(map);
   </script>
 </body>
 </html>
