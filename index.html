@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mapa Kuriozit</title>
+  <title>Mapa Kuriozit - ČÚZK podklady</title>
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -12,7 +12,7 @@
     body { margin: 0; font-family: sans-serif; }
     #map { 
       height: 100vh; 
-      background: white; /* bílé pozadí mimo mapové dlaždice */
+      background: white;
     }
     .form-popup {
       position: fixed;
@@ -40,7 +40,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    // Inicializace mapy s omezením na ČR
     const map = L.map('map', {
       maxBounds: [
         [48.5, 12],
@@ -51,9 +50,12 @@
       maxZoom: 14,
     }).setView([49.8, 15.5], 8);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '&copy; OpenStreetMap'
+    // Přidání ortofotomapy ČÚZK (WMS)
+    L.tileLayer.wms('https://ags.cuzk.cz/arcgis/services/DMR4_Orto/MapServer/WMSServer?', {
+      layers: '0',
+      format: 'image/png',
+      transparent: false,
+      attribution: '© ČÚZK'
     }).addTo(map);
 
     let selectedLocation = null;
