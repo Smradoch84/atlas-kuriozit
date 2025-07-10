@@ -2,15 +2,10 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
+  <title>Přesné hranice ČR s maskou</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Debug masky mimo ČR</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    html, body, #map {
-      height: 100%;
-      margin: 0; padding: 0;
-    }
-  </style>
+  <style>html,body,#map{height:100%;margin:0;padding:0;}</style>
 </head>
 <body>
   <div id="map"></div>
@@ -19,86 +14,44 @@
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
   <script>
-    const map = L.map('map', {
-      minZoom: 7,
-      maxZoom: 14,
-      maxBounds: [
-        [48.5, 12],
-        [51.1, 19]
-      ],
-      maxBoundsViscosity: 1.0
-    }).setView([49.8, 15.5], 8);
-
+    const map = L.map('map').setView([49.8, 15.5], 8);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
-      maxZoom: 19,
+      maxZoom: 19
     }).addTo(map);
 
-    const worldPolygon = turf.polygon([[ 
-      [-180, 90],
-      [180, 90],
-      [180, -90],
-      [-180, -90],
-      [-180, 90]
-    ]]);
-
-    fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
-      .then(response => {
-        console.log('Response status:', response.status);
-        if (!response.ok) throw new Error('Network response was not ok: ' + response.status);
-        return response.json();
+    fetch('https://raw.githubusercontent.com/tvaliasek/CZ-GeoJSON/master/CZGeoJSON.json')
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP status ${res.status}`);
+        return res.json();
       })
-      .then(geojson => {
-        console.log('GeoJSON načten:', geojson);
+      .then(czechFeature => {
+        console.log('Načten GeoJSON ČR:', czechFeature);
 
-        if (!geojson.features) throw new Error('GeoJSON nemá "features"');
+        const feature = czechFeature.type === 'Feature'
+          ? czechFeature
+          : { type: 'Feature', geometry: czechFeature.features[0].geometry };
 
-        const czechFeature = geojson.features.find(f => f.properties.ISO_A3 === "CZE");
-        if (!czechFeature) throw new Error("Česká republika nebyla nalezena v datech");
+        const world = turf.polygon([[
+          [-180, 90],[180, 90],[180, -90],[-180, -90],[-180, 90]
+        ]]);
 
-        console.log("ČR feature:", czechFeature);
-
-        // Zkusíme vytvořit masku světa bez ČR
-        let mask;
-        try {
-          mask = turf.difference(worldPolygon, czechFeature);
-        } catch (e) {
-          console.error('Chyba při turf.difference:', e);
-          alert('Chyba při výpočtu masky - podívej se do konzole.');
-          return;
-        }
-
+        const mask = turf.difference(world, feature);
         if (!mask) {
-          console.error('turf.difference vrátil null');
-          alert('Chyba: nelze vytvořit masku, rozdíl je null.');
+          console.error('Nepodařilo se vytvořit masku.'); 
           return;
         }
-
-        console.log('Maska vytvořena:', mask);
 
         L.geoJSON(mask, {
-          style: {
-            fillColor: 'white',
-            fillOpacity: 0.85,
-            color: null,
-            stroke: false,
-            interactive: false
-          }
+          style: { fillColor: 'white', fillOpacity: 0.85, stroke: false, interactive: false }
         }).addTo(map);
 
-        L.geoJSON(czechFeature, {
-          style: {
-            color: 'black',
-            weight: 2,
-            fillOpacity: 0,
-            interactive: false
-          }
+        L.geoJSON(feature, {
+          style: { color: 'black', weight: 2, fillOpacity: 0, interactive: false }
         }).addTo(map);
-
       })
       .catch(err => {
-        console.error('Chyba při načítání nebo zpracování hranice ČR:', err, err.message, err.stack);
-        alert('Chyba při načítání nebo zpracování hranice ČR:\n' + err.message);
+        console.error('Chyba při načítání nebo zpracování:', err);
       });
   </script>
 </body>
