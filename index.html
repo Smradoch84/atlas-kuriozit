@@ -50,10 +50,12 @@
         }).addTo(map);
       });
 
-    // Interaktivní kraje z robustního zdroje
-    fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/CZE/administrative_1.geo.json')
+    // Interaktivní kraje s debugem
+    fetch('https://raw.githubusercontent.com/martin-ruzicka/czech-regions-geojson/main/kraje.json')
       .then(res => res.json())
       .then(kraje => {
+        console.log('Kraje data:', kraje);
+
         L.geoJSON(kraje, {
           style: {
             color: '#0074D9',
@@ -61,8 +63,11 @@
             fillOpacity: 0.3
           },
           onEachFeature: (feature, layer) => {
-            // Vypisování názvu kraje podle vlastnosti "name"
-            const nazev = feature.properties.name || 'Kraj';
+            console.log('Kraj properties:', feature.properties);
+
+            // Zkusíme několik možných názvů vlastností pro název kraje
+            const nazev = feature.properties.NAZ_CZNUTS3 || feature.properties.NAZEV || feature.properties.name || 'Kraj';
+
             layer.on('click', () => {
               layer.bindPopup(`<strong>${nazev}</strong>`).openPopup();
             });
