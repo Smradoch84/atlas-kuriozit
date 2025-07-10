@@ -37,35 +37,44 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const map = L.map('map').setView([49.8, 15.5], 7);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
+  const map = L.map('map', {
+    maxBounds: [
+      [48.5, 12],
+      [51.1, 19.0]
+    ],
+    maxBoundsViscosity: 1.0,
+    minZoom: 7,
+    maxZoom: 14,
+  }).setView([49.8, 15.5], 8);
 
-    let selectedLocation = null;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
 
-    function openForm(latlng) {
-      selectedLocation = latlng;
-      document.getElementById("form").style.display = "block";
-    }
+  let selectedLocation = null;
 
-    function closeForm() {
-      selectedLocation = null;
-      document.getElementById("form").style.display = "none";
-    }
+  function openForm(latlng) {
+    selectedLocation = latlng;
+    document.getElementById("form").style.display = "block";
+  }
 
-    function submitData() {
-      const length = document.getElementById("input-length").value;
-      if (!length || !selectedLocation) return;
-      L.marker(selectedLocation).addTo(map)
-        .bindPopup(`Délka jazyka: ${length} cm`).openPopup();
-      closeForm();
-    }
+  function closeForm() {
+    selectedLocation = null;
+    document.getElementById("form").style.display = "none";
+  }
 
-    map.on('click', function(e) {
-      openForm(e.latlng);
-    });
-  </script>
+  function submitData() {
+    const length = document.getElementById("input-length").value;
+    if (!length || !selectedLocation) return;
+    L.marker(selectedLocation).addTo(map)
+      .bindPopup(`Délka jazyka: ${length} cm`).openPopup();
+    closeForm();
+  }
+
+  map.on('click', function(e) {
+    openForm(e.latlng);
+  });
+</script>
 </body>
 </html>
