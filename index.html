@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <title>Přesné hranice ČR s maskou</title>
+  <title>Maska ČR + Interaktivní kraje</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>html,body,#map{height:100%;margin:0;padding:0;}</style>
@@ -20,38 +20,55 @@
       maxZoom: 19
     }).addTo(map);
 
+    // 1️⃣ Načtení hranice ČR a masky
     fetch('https://raw.githubusercontent.com/tvaliasek/CZ-GeoJSON/master/CZGeoJSON.json')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP status ${res.status}`);
-        return res.json();
-      })
+      .then(res => res.json())
       .then(czechFeature => {
-        console.log('Načten GeoJSON ČR:', czechFeature);
-
         const feature = czechFeature.type === 'Feature'
           ? czechFeature
           : { type: 'Feature', geometry: czechFeature.features[0].geometry };
 
-        const world = turf.polygon([[
-          [-180, 90],[180, 90],[180, -90],[-180, -90],[-180, 90]
-        ]]);
-
+        const world = turf.polygon([[[-180, 90],[180, 90],[180, -90],[-180, -90],[-180, 90]]]);
         const mask = turf.difference(world, feature);
-        if (!mask) {
-          console.error('Nepodařilo se vytvořit masku.'); 
-          return;
-        }
 
         L.geoJSON(mask, {
-          style: { fillColor: 'white', fillOpacity: 0.85, stroke: false, interactive: false }
+          style: {
+            fillColor: 'white',
+            fillOpacity: 1,      // 💡 Plně bílá maska
+            stroke: false,
+            interactive: false
+          }
         }).addTo(map);
 
         L.geoJSON(feature, {
-          style: { color: 'black', weight: 2, fillOpacity: 0, interactive: false }
+          style: {
+            color: 'black',
+            weight: 2,
+            fillOpacity: 0,
+            interactive: false
+          }
         }).addTo(map);
-      })
-      .catch(err => {
-        console.error('Chyba při načítání nebo zpracování:', err);
+      });
+
+    // 2️⃣ Interaktivní kraje
+    fetch('https://raw.githubusercontent.com/siwekm/czech-geojson/master/kraje.json')
+      .then(res => res.json())
+      .then(kraje => {
+        L.geoJSON(kraje, {
+          style: {
+            color: '#0074D9',
+            weight: 1,
+            fillOpacity: 0.2
+          },
+          onEachFeature: (feature, layer) => {
+            const nazev = feature.properties.OB_KOD
+              ? `${feature.properties.OB_KOD} - ${feature.properties.NAZ_CZNUTS3}`
+              : feature.properties.NAZ_CZNUTS3 || 'Kraj';
+            layer.on('click', () => {
+              layer.bindPopup(`<strong>${nazev}</strong>`).openPopup();
+            });
+          }
+        }).addTo(map);
       });
   </script>
 </body>
