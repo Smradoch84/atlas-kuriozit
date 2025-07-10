@@ -3,11 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mapa ČR s maskou Turf.js - debug</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <title>Debug masky mimo ČR</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html, body, #map {
       height: 100%;
@@ -32,38 +29,11 @@
       maxBoundsViscosity: 1.0
     }).setView([49.8, 15.5], 8);
 
-    // OSM podklad
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
       maxZoom: 19,
     }).addTo(map);
 
-    // Geoportal hranice obcí (linie)
-    L.tileLayer.wms('https://geoportal.gov.cz/geowebcache/service/wms?', {
-      layers: 'ZABAGED_OBCE_L',
-      format: 'image/png',
-      transparent: true,
-      attribution: '© Geoportal',
-      version: '1.3.0',
-    }).addTo(map);
-
-    // Přesnější hranice ČR (souřadnice lon, lat - povoleno takto pro Turf.js)
-    const czechRepublicGeoJSON = {
-      "type": "Feature",
-      "properties": {},
-      "geometry": {
-        "type": "Polygon",
-        "coordinates": [[
-          [12.09, 51.06], [12.58, 50.80], [13.33, 50.61], [13.88, 50.42],
-          [14.15, 50.20], [14.55, 50.15], [15.08, 50.00], [15.50, 49.85],
-          [15.92, 49.60], [16.56, 49.55], [17.05, 49.35], [17.50, 49.05],
-          [17.80, 48.90], [18.10, 48.80], [18.45, 48.75], [18.80, 48.55],
-          [18.87, 48.55], [18.87, 51.06], [12.09, 51.06]
-        ]]
-      }
-    };
-
-    // Polygon celého světa (lon, lat)
     const worldPolygon = turf.polygon([[ 
       [-180, 90],
       [180, 90],
@@ -72,35 +42,64 @@
       [-180, 90]
     ]]);
 
-    // Polygon ČR pro Turf
-    const czechPolygon = turf.polygon(czechRepublicGeoJSON.geometry.coordinates);
+    fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
+      .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) throw new Error('Network response was not ok: ' + response.status);
+        return response.json();
+      })
+      .then(geojson => {
+        console.log('GeoJSON načten:', geojson);
 
-    // Výpočet rozdílu (masky)
-    const maskPolygon = turf.difference(worldPolygon, czechPolygon);
+        if (!geojson.features) throw new Error('GeoJSON nemá "features"');
 
-    console.log('Maska Turf difference:', maskPolygon);
+        const czechFeature = geojson.features.find(f => f.properties.ISO_A3 === "CZE");
+        if (!czechFeature) throw new Error("Česká republika nebyla nalezena v datech");
 
-    // Přidání masky do mapy
-    L.geoJSON(maskPolygon, {
-      style: {
-        fillColor: 'white',
-        fillOpacity: 0.8,
-        color: null,
-        stroke: false,
-        interactive: false
-      }
-    }).addTo(map);
+        console.log("ČR feature:", czechFeature);
 
-    // Přidání hranic ČR
-    L.geoJSON(czechRepublicGeoJSON, {
-      style: {
-        color: 'black',
-        weight: 2,
-        fillOpacity: 0,
-        interactive: false
-      }
-    }).addTo(map);
+        // Zkusíme vytvořit masku světa bez ČR
+        let mask;
+        try {
+          mask = turf.difference(worldPolygon, czechFeature);
+        } catch (e) {
+          console.error('Chyba při turf.difference:', e);
+          alert('Chyba při výpočtu masky - podívej se do konzole.');
+          return;
+        }
 
+        if (!mask) {
+          console.error('turf.difference vrátil null');
+          alert('Chyba: nelze vytvořit masku, rozdíl je null.');
+          return;
+        }
+
+        console.log('Maska vytvořena:', mask);
+
+        L.geoJSON(mask, {
+          style: {
+            fillColor: 'white',
+            fillOpacity: 0.85,
+            color: null,
+            stroke: false,
+            interactive: false
+          }
+        }).addTo(map);
+
+        L.geoJSON(czechFeature, {
+          style: {
+            color: 'black',
+            weight: 2,
+            fillOpacity: 0,
+            interactive: false
+          }
+        }).addTo(map);
+
+      })
+      .catch(err => {
+        console.error('Chyba při načítání nebo zpracování hranice ČR:', err, err.message, err.stack);
+        alert('Chyba při načítání nebo zpracování hranice ČR:\n' + err.message);
+      });
   </script>
 </body>
 </html>
