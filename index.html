@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa Kuriozit</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+    crossorigin=""
+  />
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #map { height: 100vh; }
+    .form-popup {
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translate(-50%, 0);
+      background: white;
+      padding: 1em;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="form" class="form-popup" style="display:none;">
+    <h3>Zadej délku jazyka 😛</h3>
+    <input type="number" id="input-length" placeholder="v cm" />
+    <button onclick="submitData()">Odeslat</button>
+    <button onclick="closeForm()">Zavřít</button>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha512-o8Y6HD9n3yyJ1Ml9kcddRIJtWk9+7V8UV5XRm9DfXZkG03HfXoVvR4KmABc4kKkh5M3NJU+8v+47LMFZ4qVxQw=="
+    crossorigin=""></script>
+
+  <script>
+    const map = L.map('map').setView([49.8, 15.5], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    let selectedLocation = null;
+
+    function openForm(latlng) {
+      selectedLocation = latlng;
+      document.getElementById("form").style.display = "block";
+    }
+
+    function closeForm() {
+      selectedLocation = null;
+      document.getElementById("form").style.display = "none";
+    }
+
+    function submitData() {
+      const length = document.getElementById("input-length").value;
+      if (!length || !selectedLocation) return;
+      L.marker(selectedLocation).addTo(map)
+        .bindPopup(`Délka jazyka: ${length} cm`).openPopup();
+      closeForm();
+    }
+
+    map.on('click', function(e) {
+      openForm(e.latlng);
+    });
+  </script>
+</body>
+</html>
