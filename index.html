@@ -92,3 +92,145 @@
   </script>
 </body>
 </html>
+Výsledek:
+Celá mapa je "zamaskovaná" bílou vrstvou (poloprůhlednou)
+
+ČR je vidět „průhledná“ — protože na ní je průhledný polygon
+
+Čáry hranic ČR jsou vidět
+
+Můžeš pod maskou klikat a přidávat značky
+
+Pokud chceš ještě sofistikovanější řešení (true polygonová díra), bude to chtít použít například Turf.js a složitější postup, protože Leaflet sám nemá perfektní podporu polygonových děr s maskami.
+
+Chceš tohle vyzkoušet?
+Nebo chceš, abych ti pomohl s Turf.js maskou?
+
+
+
+
+
+
+
+
+Řekl/a jsi:
+udělějme to sofistikovanější metodou než jen pokus omyl a doplnovat když to nefunguje
+
+
+ChatGPT řekl:
+Jasně, pojďme to udělat pořádně pomocí Turf.js — to je knihovna pro práci s GeoJSON geometriemi a umožní nám vytvořit přesnou masku s dírou ve tvaru ČR.
+
+Princip:
+Vytvoříme polygon celého světa.
+
+Vytvoříme polygon ČR.
+
+Pomocí Turf.js uděláme rozdíl (difference), tedy „svět minus ČR“.
+
+Výsledek použijeme jako polygon masky na mapě — tedy maska zakryje vše kromě ČR.
+
+Kompletní kód s Leaflet a Turf.js:
+html
+Zkopírovat
+Upravit
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mapa ČR s maskou pomocí Turf.js</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0; padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <script>
+    const map = L.map('map', {
+      minZoom: 7,
+      maxZoom: 14,
+      maxBounds: [
+        [48.5, 12],
+        [51.1, 19]
+      ],
+      maxBoundsViscosity: 1.0
+    }).setView([49.8, 15.5], 8);
+
+    // OSM podklad
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19,
+    }).addTo(map);
+
+    // Geoportal hranice obcí (linie)
+    L.tileLayer.wms('https://geoportal.gov.cz/geowebcache/service/wms?', {
+      layers: 'ZABAGED_OBCE_L',
+      format: 'image/png',
+      transparent: true,
+      attribution: '© Geoportal',
+      version: '1.3.0',
+    }).addTo(map);
+
+    // Přesnější hranice ČR (zjednodušeny)
+    const czechRepublicGeoJSON = {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [12.09, 51.06], [12.58, 50.80], [13.33, 50.61], [13.88, 50.42],
+          [14.15, 50.20], [14.55, 50.15], [15.08, 50.00], [15.50, 49.85],
+          [15.92, 49.60], [16.56, 49.55], [17.05, 49.35], [17.50, 49.05],
+          [17.80, 48.90], [18.10, 48.80], [18.45, 48.75], [18.80, 48.55],
+          [18.87, 48.55], [18.87, 51.06], [12.09, 51.06]
+        ]]
+      }
+    };
+
+    // Polygon celého světa (mírně větší než rozsah ČR, ale stačí)
+    const worldPolygon = turf.polygon([[
+      [-180, 90],
+      [180, 90],
+      [180, -90],
+      [-180, -90],
+      [-180, 90]
+    ]]);
+
+    // Turf rozdíl: svět minus ČR
+    const czechPolygon = turf.polygon(czechRepublicGeoJSON.geometry.coordinates);
+    const maskPolygon = turf.difference(worldPolygon, czechPolygon);
+
+    // Přidáme masku do Leafletu
+    L.geoJSON(maskPolygon, {
+      style: {
+        fillColor: 'white',
+        fillOpacity: 0.8,
+        color: null,
+        stroke: false,
+        interactive: false
+      }
+    }).addTo(map);
+
+    // Přidáme hranice ČR na vrstvu s průhlednou výplní, aby byly vidět hranice
+    L.geoJSON(czechRepublicGeoJSON, {
+      style: {
+        color: 'black',
+        weight: 2,
+        fillOpacity: 0,
+        interactive: false
+      }
+    }).addTo(map);
+  </script>
+</body>
+</html>
