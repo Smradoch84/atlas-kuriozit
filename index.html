@@ -37,73 +37,75 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-  const map = L.map('map', {
-    maxBounds: [
-      [48.5, 12],
-      [51.1, 19.0]
-    ],
-    maxBoundsViscosity: 1.0,
-    minZoom: 7,
-    maxZoom: 14,
-  }).setView([49.8, 15.5], 8);
+    // Inicializace mapy s omezením na ČR
+    const map = L.map('map', {
+      maxBounds: [
+        [48.5, 12],
+        [51.1, 19.0]
+      ],
+      maxBoundsViscosity: 1.0,
+      minZoom: 7,
+      maxZoom: 14,
+    }).setView([49.8, 15.5], 8);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
     // GeoJSON hranice ČR (zjednodušené)
-const czechRepublic = {
-  "type": "Polygon",
-  "coordinates": [[
-    [12.09, 51.06],
-    [18.87, 51.06],
-    [18.87, 48.55],
-    [12.09, 48.55],
-    [12.09, 51.06]
-  ]]
-};
+    const czechRepublic = {
+      "type": "Polygon",
+      "coordinates": [[
+        [12.09, 51.06],
+        [18.87, 51.06],
+        [18.87, 48.55],
+        [12.09, 48.55],
+        [12.09, 51.06]
+      ]]
+    };
 
-// Polygon pokrývající celý svět (podobný obdélník, co zahrnuje vše)
-const worldBounds = [
-  [90, -180],
-  [90, 180],
-  [-90, 180],
-  [-90, -180],
-  [90, -180]
-];
+    // Polygon pokrývající celý svět
+    const worldBounds = [
+      [90, -180],
+      [90, 180],
+      [-90, 180],
+      [-90, -180],
+      [90, -180]
+    ];
 
-// Vytvoříme polygon se „dírou“ v místě ČR
-const mask = L.polygon([worldBounds, czechRepublic.coordinates[0]], {
-  color: '#ffffff',
-  fillColor: '#ffffff',
-  fillOpacity: 1,
-  stroke: false,
-  interactive: false
-}).addTo(map);
+    // Maska - oblast mimo ČR překrytá bílou barvou
+    const mask = L.polygon([worldBounds, czechRepublic.coordinates[0]], {
+      color: '#ffffff',
+      fillColor: '#ffffff',
+      fillOpacity: 1,
+      stroke: false,
+      interactive: false
+    }).addTo(map);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
+    let selectedLocation = null;
 
-  let selectedLocation = null;
+    function openForm(latlng) {
+      selectedLocation = latlng;
+      document.getElementById("form").style.display = "block";
+    }
 
-  function openForm(latlng) {
-    selectedLocation = latlng;
-    document.getElementById("form").style.display = "block";
-  }
+    function closeForm() {
+      selectedLocation = null;
+      document.getElementById("form").style.display = "none";
+    }
 
-  function closeForm() {
-    selectedLocation = null;
-    document.getElementById("form").style.display = "none";
-  }
+    function submitData() {
+      const length = document.getElementById("input-length").value;
+      if (!length || !selectedLocation) return;
+      L.marker(selectedLocation).addTo(map)
+        .bindPopup(`Délka jazyka: ${length} cm`).openPopup();
+      closeForm();
+    }
 
-  function submitData() {
-    const length = document.getElementById("input-length").value;
-    if (!length || !selectedLocation) return;
-    L.marker(selectedLocation).addTo(map)
-      .bindPopup(`Délka jazyka: ${length} cm`).openPopup();
-    closeForm();
-  }
-
-  map.on('click', function(e) {
-    openForm(e.latlng);
-  });
-</script>
+    map.on('click', function(e) {
+      openForm(e.latlng);
+    });
+  </script>
 </body>
 </html>
