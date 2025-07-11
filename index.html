@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <title>Maska ČR + Interaktivní kraje - Debug</title>
+  <title>Maska ČR + Interaktivní kraje (funkční)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>html,body,#map{height:100%;margin:0;padding:0;}</style>
@@ -15,12 +15,13 @@
 
   <script>
     const map = L.map('map').setView([49.8, 15.5], 8);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
       maxZoom: 19
     }).addTo(map);
 
-    // Načtení hranic ČR a masky
+    // ✅ Maska ČR (vytvoření white-out efektu)
     fetch('https://raw.githubusercontent.com/tvaliasek/CZ-GeoJSON/master/CZGeoJSON.json')
       .then(res => res.json())
       .then(czechFeature => {
@@ -50,25 +51,21 @@
         }).addTo(map);
       });
 
-    // Načtení krajů
-    fetch('https://raw.githubusercontent.com/martin-ruzicka/czech-regions-geojson/main/kraje.json')
+    // ✅ Kraje z GitHubu (vlastní cz.json)
+    fetch('https://raw.githubusercontent.com/Smradoch84/kraje/main/cz.json')
       .then(res => {
         if (!res.ok) throw new Error('Síťová odpověď nebyla OK');
         return res.json();
       })
       .then(kraje => {
-        console.log('Kraje data:', kraje);
-
         L.geoJSON(kraje, {
           style: {
-            color: 'red',
-            weight: 2,
-            fillOpacity: 0
+            color: '#0074D9',
+            weight: 1.5,
+            fillOpacity: 0.1
           },
           onEachFeature: (feature, layer) => {
-            console.log('Kraj properties:', feature.properties);
-
-            const nazev = feature.properties.NAZ_CZNUTS3 || feature.properties.NAZEV || feature.properties.name || 'Neznámý kraj';
+            const nazev = feature.properties.name || feature.properties.NAZ_CZNUTS3 || feature.properties.NAZEV || 'Neznámý kraj';
             layer.on('click', () => {
               layer.bindPopup(`<strong>${nazev}</strong>`).openPopup();
             });
