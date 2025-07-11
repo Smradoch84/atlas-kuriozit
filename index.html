@@ -21,7 +21,7 @@
       maxZoom: 19
     }).addTo(map);
 
-    // ✅ Maska ČR (vytvoření white-out efektu)
+    // ✅ Maska ČR (white-out efekt kolem ČR)
     fetch('https://raw.githubusercontent.com/tvaliasek/CZ-GeoJSON/master/CZGeoJSON.json')
       .then(res => res.json())
       .then(czechFeature => {
@@ -29,7 +29,7 @@
           ? czechFeature
           : { type: 'Feature', geometry: czechFeature.features[0].geometry };
 
-        const world = turf.polygon([[[-180, 90],[180, 90],[180, -90],[-180, -90],[-180, 90]]]);
+        const world = turf.polygon([[[-180, 90], [180, 90], [180, -90], [-180, -90], [-180, 90]]]);
         const mask = turf.difference(world, feature);
 
         L.geoJSON(mask, {
@@ -51,7 +51,7 @@
         }).addTo(map);
       });
 
-    // ✅ Kraje z GitHubu (vlastní cz.json)
+    // ✅ Načtení krajů z GitHubu
     fetch('https://raw.githubusercontent.com/Smradoch84/kraje/main/cz.json')
       .then(res => {
         if (!res.ok) throw new Error('Síťová odpověď nebyla OK');
