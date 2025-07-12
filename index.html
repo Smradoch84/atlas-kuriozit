@@ -2,80 +2,221 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <title>Maska ČR + Interaktivní kraje (funkční)</title>
+  <title>Mapa s formulářem a jedním markerem (bez probleskování)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>html,body,#map{height:100%;margin:0;padding:0;}</style>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f0f0;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      width: 800px;
+      height: 500px;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+    }
+
+    form {
+      margin-top: 10px;
+      background: white;
+      padding: 10px 15px;
+      border-radius: 4px;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+    }
+
+    input,
+    select,
+    button {
+      margin: 5px;
+      padding: 6px 8px;
+      font-size: 14px;
+    }
+
+    label {
+      margin-left: 5px;
+      margin-right: 15px;
+    }
+  </style>
 </head>
 <body>
+  <form id="dataForm">
+    <label for="delka">Délka jazyka (mm):</label>
+    <input type="number" id="delka" name="delka" min="1" required />
+
+    <label for="obec">Obec:</label>
+    <input
+      type="text"
+      id="obec"
+      name="obec"
+      list="obceList"
+      autocomplete="off"
+      required
+      placeholder="Vyber obec"
+    />
+    <datalist id="obceList"></datalist>
+
+    <button type="submit">Přidat</button>
+  </form>
+
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
   <script>
-    const map = L.map('map').setView([49.8, 15.5], 8);
+    const obce = [
+      { obec: "Praha", kraj: "Hlavní město Praha", coords: [50.0755, 14.4378] },
+      { obec: "Brno", kraj: "Jihomoravský kraj", coords: [49.1951, 16.6068] },
+      { obec: "Ostrava", kraj: "Moravskoslezský kraj", coords: [49.8209, 18.2625] },
+      // další obce...
+    ];
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
-      maxZoom: 19
+    const obceList = document.getElementById("obceList");
+    obce.forEach(({ obec }) => {
+      const option = document.createElement("option");
+      option.value = obec;
+      obceList.appendChild(option);
+    });
+
+    // Inicializace mapy s maxBounds (hranice kolem ČR) - zabrání probleskování
+    const map = L.map("map", {
+      zoomControl: true,
+      minZoom: 7,
+      maxZoom: 18,
+      maxBounds: [[48, 12], [51, 19]], // ČR + malý buffer
+      maxBoundsViscosity: 1.0
+    }).setView([49.8, 15.5], 8);
+
+    const tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap",
+      maxZoom: 19,
+      updateWhenZooming: false,
+      updateWhenIdle: true,
+      keepBuffer: 2
     }).addTo(map);
 
-    // ✅ Maska ČR (white-out efekt kolem ČR)
-    fetch('https://raw.githubusercontent.com/tvaliasek/CZ-GeoJSON/master/CZGeoJSON.json')
-      .then(res => res.json())
-      .then(czechFeature => {
-        const feature = czechFeature.type === 'Feature'
-          ? czechFeature
-          : { type: 'Feature', geometry: czechFeature.features[0].geometry };
+    // Vrstvy masky a hranic ČR v samostatných skupinách
+    let maskLayerGroup = L.layerGroup().addTo(map);
+    let czechBorderLayerGroup = L.layerGroup().addTo(map);
 
-        const world = turf.polygon([[[-180, 90], [180, 90], [180, -90], [-180, -90], [-180, 90]]]);
+    fetch(
+      "https://raw.githubusercontent.com/tvaliasek/CZ-GeoJSON/master/CZGeoJSON.json"
+    )
+      .then((res) => res.json())
+      .then((czechFeature) => {
+        const feature =
+          czechFeature.type === "Feature"
+            ? czechFeature
+            : { type: "Feature", geometry: czechFeature.features[0].geometry };
+
+        const world = turf.polygon([
+          [
+            [-180, 90],
+            [180, 90],
+            [180, -90],
+            [-180, -90],
+            [-180, 90],
+          ],
+        ]);
         const mask = turf.difference(world, feature);
 
-        L.geoJSON(mask, {
+        const maskLayer = L.geoJSON(mask, {
+          interactive: false,
+          pane: 'overlayPane',
           style: {
-            fillColor: 'white',
+            fillColor: "white",
             fillOpacity: 1,
             stroke: false,
-            interactive: false
-          }
-        }).addTo(map);
-
-        L.geoJSON(feature, {
+          },
+        });
+        const borderLayer = L.geoJSON(feature, {
+          interactive: false,
+          pane: 'overlayPane',
           style: {
-            color: 'black',
+            color: "black",
             weight: 2,
             fillOpacity: 0,
-            interactive: false
-          }
-        }).addTo(map);
+          },
+        });
+
+        maskLayerGroup.addLayer(maskLayer);
+        czechBorderLayerGroup.addLayer(borderLayer);
       });
 
-    // ✅ Načtení krajů z GitHubu
-    fetch('https://raw.githubusercontent.com/Smradoch84/kraje/main/cz.json')
-      .then(res => {
-        if (!res.ok) throw new Error('Síťová odpověď nebyla OK');
+    // Kraje
+    fetch("https://raw.githubusercontent.com/Smradoch84/kraje/main/cz.json")
+      .then((res) => {
+        if (!res.ok) throw new Error("Síťová odpověď nebyla OK");
         return res.json();
       })
-      .then(kraje => {
+      .then((kraje) => {
         L.geoJSON(kraje, {
           style: {
-            color: '#0074D9',
+            color: "#0074D9",
             weight: 1.5,
-            fillOpacity: 0.1
+            fillOpacity: 0.1,
           },
           onEachFeature: (feature, layer) => {
-            const nazev = feature.properties.name || feature.properties.NAZ_CZNUTS3 || feature.properties.NAZEV || 'Neznámý kraj';
-            layer.on('click', () => {
+            const nazev =
+              feature.properties.name ||
+              feature.properties.NAZ_CZNUTS3 ||
+              feature.properties.NAZEV ||
+              "Neznámý kraj";
+            layer.on("click", () => {
               layer.bindPopup(`<strong>${nazev}</strong>`).openPopup();
             });
-          }
+          },
         }).addTo(map);
       })
-      .catch(err => {
-        console.error('Chyba při načítání krajů:', err);
-        alert('Chyba při načítání krajů: ' + err.message);
+      .catch((err) => {
+        console.error("Chyba při načítání krajů:", err);
+        alert("Chyba při načítání krajů: " + err.message);
       });
+
+    let lastMarker = null;
+
+    document.getElementById("dataForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const delka = document.getElementById("delka").value;
+      const obec = document.getElementById("obec").value.trim();
+
+      const obecData = obce.find(
+        (o) => o.obec.toLowerCase() === obec.toLowerCase()
+      );
+      if (!obecData) {
+        alert("Obec nenalezena v databázi, vyber prosím z nabídky.");
+        return;
+      }
+
+      const cas = new Date().toLocaleString();
+
+      if (lastMarker) {
+        map.removeLayer(lastMarker);
+      }
+      lastMarker = L.marker(obecData.coords)
+        .addTo(map)
+        .bindPopup(
+          `<strong>${obecData.obec}</strong><br>Délka jazyka: ${delka} mm<br>Čas vložení: ${cas}`
+        )
+        .openPopup();
+
+      map.setView(obecData.coords, 12, { animate: true });
+
+      document.getElementById("dataForm").reset();
+    });
   </script>
 </body>
 </html>
