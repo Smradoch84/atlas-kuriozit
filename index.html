@@ -35,7 +35,7 @@
       maxZoom: 18,
       maxBounds: [[47.5, 10], [52, 20]], // hranice kolem ČR s rezervou
       renderer: L.canvas({ padding: 0.8 }) // prevence problikávání
-    }).setView([49.8, 15.5], 6); // ← oddálená mapa
+    }).setView([49.8, 15.5], 7); // ← přiblížení o 50 % (z 6 → 7)
 
     // Podkladová mapa
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -55,7 +55,6 @@
         const world = turf.polygon([[[-180, 90], [180, 90], [180, -90], [-180, -90], [-180, 90]]]);
         const mask = turf.difference(world, feature);
 
-        // Maskování mimo ČR
         L.geoJSON(mask, {
           style: {
             fillColor: 'white',
@@ -65,7 +64,6 @@
           }
         }).addTo(map);
 
-        // Hraniční obrys ČR
         L.geoJSON(feature, {
           style: {
             color: 'black',
