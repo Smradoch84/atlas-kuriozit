@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <title>Atlas kuriozit - mapa ČR</title>
+  <title>Atlas kuriozit - Mapa ČR s formulářem</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
@@ -12,9 +12,25 @@
       height: 100%;
       background: #f0f0f0;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
     }
+
+    #form {
+      background: white;
+      padding: 1em;
+      margin: 1em 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      max-width: 800px;
+      width: 90%;
+    }
+
+    #form label {
+      display: block;
+      margin-top: 0.5em;
+    }
+
     #map {
       width: 800px;
       height: 600px;
@@ -23,6 +39,47 @@
   </style>
 </head>
 <body>
+
+  <div id="form">
+    <h2>Vlož kuriozitu</h2>
+    <form id="kuriozniForm">
+      <label>Název obce:
+        <input type="text" id="obec" required />
+      </label>
+
+      <label>Kraj:
+        <select id="kraj" required>
+          <option value="">Vyber kraj</option>
+          <option value="Hlavní město Praha">Hlavní město Praha</option>
+          <option value="Středočeský kraj">Středočeský kraj</option>
+          <option value="Jihočeský kraj">Jihočeský kraj</option>
+          <option value="Plzeňský kraj">Plzeňský kraj</option>
+          <option value="Karlovarský kraj">Karlovarský kraj</option>
+          <option value="Ústecký kraj">Ústecký kraj</option>
+          <option value="Liberecký kraj">Liberecký kraj</option>
+          <option value="Královéhradecký kraj">Královéhradecký kraj</option>
+          <option value="Pardubický kraj">Pardubický kraj</option>
+          <option value="Vysočina">Vysočina</option>
+          <option value="Jihomoravský kraj">Jihomoravský kraj</option>
+          <option value="Olomoucký kraj">Olomoucký kraj</option>
+          <option value="Zlínský kraj">Zlínský kraj</option>
+          <option value="Moravskoslezský kraj">Moravskoslezský kraj</option>
+        </select>
+      </label>
+
+      <label>Délka jazyka (v metrech):
+        <input type="number" id="jazyk" min="0" step="0.01" />
+      </label>
+
+      <label>
+        <input type="checkbox" id="anonymne" />
+        Chci zůstat v anonymitě
+      </label>
+
+      <button type="submit">Odeslat</button>
+    </form>
+  </div>
+
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -33,18 +90,17 @@
       zoomControl: true,
       minZoom: 5,
       maxZoom: 18,
-      maxBounds: [[47.5, 10], [52, 20]], // hranice kolem ČR s rezervou
-      renderer: L.canvas({ padding: 0.8 }) // prevence problikávání
-    }).setView([49.8, 15.5], 7); // ← přiblížení o 50 % (z 6 → 7)
+      maxBounds: [[47.5, 10], [52, 20]],
+      renderer: L.canvas({ padding: 0.8 })
+    }).setView([49.8, 15.5], 7); // Přiblíženo o 50 %
 
-    // Podkladová mapa
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
       maxZoom: 19,
       updateWhenZooming: false
     }).addTo(map);
 
-    // ✅ Maska ČR (white-out efekt)
+    // ✅ Maska ČR
     fetch('https://raw.githubusercontent.com/tvaliasek/CZ-GeoJSON/master/CZGeoJSON.json')
       .then(res => res.json())
       .then(czechFeature => {
@@ -74,12 +130,9 @@
         }).addTo(map);
       });
 
-    // ✅ Načtení krajů
+    // ✅ Kraje
     fetch('https://raw.githubusercontent.com/Smradoch84/kraje/main/cz.json')
-      .then(res => {
-        if (!res.ok) throw new Error('Chyba načítání krajů');
-        return res.json();
-      })
+      .then(res => res.json())
       .then(kraje => {
         L.geoJSON(kraje, {
           style: {
@@ -88,17 +141,29 @@
             fillOpacity: 0.1
           },
           onEachFeature: (feature, layer) => {
-            const nazev = feature.properties.name || feature.properties.NAZ_CZNUTS3 || feature.properties.NAZEV || 'Neznámý kraj';
+            const nazev = feature.properties.name || feature.properties.NAZEV || 'Neznámý kraj';
             layer.on('click', () => {
               layer.bindPopup(`<strong>${nazev}</strong>`).openPopup();
             });
           }
         }).addTo(map);
-      })
-      .catch(err => {
-        console.error('Chyba při načítání krajů:', err);
-        alert('Chyba při načítání krajů: ' + err.message);
       });
+
+    // ✅ Obsluha formuláře
+    document.getElementById('kuriozniForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const obec = document.getElementById('obec').value;
+      const kraj = document.getElementById('kraj').value;
+      const jazyk = document.getElementById('jazyk').value;
+      const anonymne = document.getElementById('anonymne').checked;
+
+      alert(`Kuriozita z obce ${obec} (${kraj}) o délce ${jazyk}m byla ${anonymne ? 'anonymně' : 'veřejně'} uložena.`);
+
+      // Simulace přidání bodu na mapu (bez souřadnic)
+      const dummyCoords = [49.8 + Math.random() * 0.5 - 0.25, 15.5 + Math.random() * 0.5 - 0.25];
+      L.marker(dummyCoords).addTo(map).bindPopup(`<strong>${obec}</strong><br>${kraj}<br>Jazyk: ${jazyk}m`).openPopup();
+    });
   </script>
 </body>
 </html>
