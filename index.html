@@ -43,11 +43,11 @@
   <div id="form">
     <h2>Vlož kuriozitu</h2>
     <form id="kuriozniForm">
-      <label>Název obce:
+      <label for="obec">Název obce:
         <input type="text" id="obec" required />
       </label>
 
-      <label>Kraj:
+      <label for="kraj">Kraj:
         <select id="kraj" required>
           <option value="">Vyber kraj</option>
           <option value="Hlavní město Praha">Hlavní město Praha</option>
@@ -67,7 +67,7 @@
         </select>
       </label>
 
-      <label>Délka jazyka (v metrech):
+      <label for="jazyk">Délka jazyka (v metrech):
         <input type="number" id="jazyk" min="0" step="0.01" />
       </label>
 
@@ -92,7 +92,7 @@
       maxZoom: 18,
       maxBounds: [[47.5, 10], [52, 20]],
       renderer: L.canvas({ padding: 0.8 })
-    }).setView([49.8, 15.5], 7); // Přiblíženo o 50 %
+    }).setView([49.8, 15.5], 7);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
@@ -149,20 +149,50 @@
         }).addTo(map);
       });
 
+    // ✅ Načti seznam obcí
+    let seznamObci = [];
+    fetch('https://raw.githubusercontent.com/Smradoch84/kraje/main/obce.json')
+      .then(res => res.json())
+      .then(data => {
+        seznamObci = data.features;
+      });
+
     // ✅ Obsluha formuláře
     document.getElementById('kuriozniForm').addEventListener('submit', function (e) {
       e.preventDefault();
 
-      const obec = document.getElementById('obec').value;
+      const obec = document.getElementById('obec').value.trim();
       const kraj = document.getElementById('kraj').value;
-      const jazyk = document.getElementById('jazyk').value;
+      const jazyk = parseFloat(document.getElementById('jazyk').value);
       const anonymne = document.getElementById('anonymne').checked;
 
-      alert(`Kuriozita z obce ${obec} (${kraj}) o délce ${jazyk}m byla ${anonymne ? 'anonymně' : 'veřejně'} uložena.`);
+      if (!obec || !kraj || isNaN(jazyk)) {
+        alert("Vyplň všechna pole správně.");
+        return;
+      }
 
-      // Simulace přidání bodu na mapu (bez souřadnic)
-      const dummyCoords = [49.8 + Math.random() * 0.5 - 0.25, 15.5 + Math.random() * 0.5 - 0.25];
-      L.marker(dummyCoords).addTo(map).bindPopup(`<strong>${obec}</strong><br>${kraj}<br>Jazyk: ${jazyk}m`).openPopup();
+      const nalezenaObec = seznamObci.find(f => {
+        const nazev = f.properties.NAZ_OBEC?.toLowerCase();
+        return nazev === obec.toLowerCase();
+      });
+
+      if (!nalezenaObec) {
+        alert(`Obec "${obec}" nebyla nalezena v databázi.`);
+        return;
+      }
+
+      const coords = nalezenaObec.geometry.coordinates;
+      const lng = coords[0];
+      const lat = coords[1];
+
+      L.marker([lat, lng])
+        .addTo(map)
+        .bindPopup(`<strong>${obec}</strong><br>${kraj}<br>Jazyk: ${jazyk} m`)
+        .openPopup();
+
+      alert(`Kuriozita z obce ${obec} (${kraj}) o délce ${jazyk} m byla ${anonymne ? 'anonymně' : 'veřejně'} uložena.`);
+
+      document.getElementById('kuriozniForm').reset();
     });
   </script>
 </body>
