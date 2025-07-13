@@ -24,6 +24,7 @@
       border-radius: 8px;
       max-width: 800px;
       width: 90%;
+      position: relative;
     }
 
     #form label {
@@ -36,38 +37,38 @@
       height: 600px;
       border: 1px solid #ccc;
     }
+
+    .autocomplete-list {
+      position: absolute;
+      background: white;
+      border: 1px solid #ccc;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      width: 90%;
+    }
+
+    .autocomplete-list div {
+      padding: 0.5em;
+      cursor: pointer;
+    }
+
+    .autocomplete-list div:hover,
+    .autocomplete-list .active {
+      background-color: #eee;
+    }
   </style>
 </head>
 <body>
-
   <div id="form">
     <h2>Vlož kuriozitu</h2>
     <form id="kuriozniForm">
       <label for="obec">Název obce:
-        <input type="text" id="obec" required />
+        <input type="text" id="obec" autocomplete="off" required />
+        <div id="obec-suggestions" class="autocomplete-list"></div>
       </label>
 
-      <label for="kraj">Kraj:
-        <select id="kraj" required>
-          <option value="">Vyber kraj</option>
-          <option value="Hlavní město Praha">Hlavní město Praha</option>
-          <option value="Středočeský kraj">Středočeský kraj</option>
-          <option value="Jihočeský kraj">Jihočeský kraj</option>
-          <option value="Plzeňský kraj">Plzeňský kraj</option>
-          <option value="Karlovarský kraj">Karlovarský kraj</option>
-          <option value="Ústecký kraj">Ústecký kraj</option>
-          <option value="Liberecký kraj">Liberecký kraj</option>
-          <option value="Královéhradecký kraj">Královéhradecký kraj</option>
-          <option value="Pardubický kraj">Pardubický kraj</option>
-          <option value="Vysočina">Vysočina</option>
-          <option value="Jihomoravský kraj">Jihomoravský kraj</option>
-          <option value="Olomoucký kraj">Olomoucký kraj</option>
-          <option value="Zlínský kraj">Zlínský kraj</option>
-          <option value="Moravskoslezský kraj">Moravskoslezský kraj</option>
-        </select>
-      </label>
-
-      <label for="jazyk">Délka jazyka (v metrech):
+      <label>Délka jazyka (v metrech):
         <input type="number" id="jazyk" min="0" step="0.01" />
       </label>
 
@@ -100,7 +101,7 @@
       updateWhenZooming: false
     }).addTo(map);
 
-    // ✅ Maska ČR
+    // Maska ČR
     fetch('https://raw.githubusercontent.com/tvaliasek/CZ-GeoJSON/master/CZGeoJSON.json')
       .then(res => res.json())
       .then(czechFeature => {
@@ -130,7 +131,7 @@
         }).addTo(map);
       });
 
-    // ✅ Kraje
+    // Kraje
     fetch('https://raw.githubusercontent.com/Smradoch84/kraje/main/cz.json')
       .then(res => res.json())
       .then(kraje => {
@@ -149,50 +150,103 @@
         }).addTo(map);
       });
 
-    // ✅ Načti seznam obcí
+    function normalize(text) {
+      return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase();
+    }
+
     let seznamObci = [];
+    let suggestionIndex = -1;
+
     fetch('https://raw.githubusercontent.com/Smradoch84/kraje/main/obce.json')
       .then(res => res.json())
       .then(data => {
         seznamObci = data.features;
       });
 
-    // ✅ Obsluha formuláře
-    document.getElementById('kuriozniForm').addEventListener('submit', function (e) {
-      e.preventDefault();
+    const obecInput = document.getElementById("obec");
+    const suggestionsContainer = document.getElementById("obec-suggestions");
 
-      const obec = document.getElementById('obec').value.trim();
-      const kraj = document.getElementById('kraj').value;
-      const jazyk = parseFloat(document.getElementById('jazyk').value);
-      const anonymne = document.getElementById('anonymne').checked;
-
-      if (!obec || !kraj || isNaN(jazyk)) {
-        alert("Vyplň všechna pole správně.");
+    obecInput.addEventListener("input", () => {
+      const value = normalize(obecInput.value);
+      if (!value || seznamObci.length === 0) {
+        suggestionsContainer.innerHTML = "";
         return;
       }
 
-      const nalezenaObec = seznamObci.find(f => {
-        const nazev = f.properties.NAZ_OBEC?.toLowerCase();
-        return nazev === obec.toLowerCase();
+      const matches = seznamObci.filter(o =>
+        normalize(o.properties.NAZ_OBEC).startsWith(value)
+      ).slice(0, 10);
+
+      if (matches.length === 0) {
+        suggestionsContainer.innerHTML = "";
+        return;
+      }
+
+      suggestionsContainer.innerHTML = matches
+        .map(m => `<div>${m.properties.NAZ_OBEC}</div>`)
+        .join("");
+
+      suggestionIndex = -1;
+    });
+
+    suggestionsContainer.addEventListener("click", e => {
+      if (e.target.tagName === "DIV") {
+        obecInput.value = e.target.textContent;
+        suggestionsContainer.innerHTML = "";
+      }
+    });
+
+    obecInput.addEventListener("keydown", e => {
+      const items = suggestionsContainer.querySelectorAll("div");
+      if (!items.length) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        suggestionIndex = (suggestionIndex + 1) % items.length;
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        suggestionIndex = (suggestionIndex - 1 + items.length) % items.length;
+      } else if (e.key === "Enter") {
+        if (suggestionIndex >= 0 && items[suggestionIndex]) {
+          e.preventDefault();
+          obecInput.value = items[suggestionIndex].textContent;
+          suggestionsContainer.innerHTML = "";
+        }
+      }
+
+      items.forEach((el, idx) => {
+        el.classList.toggle("active", idx === suggestionIndex);
       });
+    });
+
+    document.addEventListener("click", e => {
+      if (!suggestionsContainer.contains(e.target) && e.target !== obecInput) {
+        suggestionsContainer.innerHTML = "";
+      }
+    });
+
+    document.getElementById('kuriozniForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const obec = document.getElementById('obec').value;
+      const jazyk = document.getElementById('jazyk').value;
+      const anonymne = document.getElementById('anonymne').checked;
+
+      const nalezenaObec = seznamObci.find(f => normalize(f.properties.NAZ_OBEC) === normalize(obec));
 
       if (!nalezenaObec) {
         alert(`Obec "${obec}" nebyla nalezena v databázi.`);
         return;
       }
 
+      const kraj = nalezenaObec.properties.NAZ_KRAJ || "Neznámý kraj";
+
+      alert(`Kuriozita z obce ${obec} (${kraj}) o délce ${jazyk}m byla ${anonymne ? 'anonymně' : 'veřejně'} uložena.`);
+
       const coords = nalezenaObec.geometry.coordinates;
-      const lng = coords[0];
-      const lat = coords[1];
+      const latlng = [coords[1], coords[0]];
 
-      L.marker([lat, lng])
-        .addTo(map)
-        .bindPopup(`<strong>${obec}</strong><br>${kraj}<br>Jazyk: ${jazyk} m`)
-        .openPopup();
-
-      alert(`Kuriozita z obce ${obec} (${kraj}) o délce ${jazyk} m byla ${anonymne ? 'anonymně' : 'veřejně'} uložena.`);
-
-      document.getElementById('kuriozniForm').reset();
+      L.marker(latlng).addTo(map).bindPopup(`<strong>${obec}</strong><br>${kraj}<br>Jazyk: ${jazyk}m`).openPopup();
     });
   </script>
 </body>
