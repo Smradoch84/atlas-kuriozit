@@ -2,68 +2,58 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <title>Atlas kuriozit</title>
+  <title>Maska ČR + Interaktivní kraje + Formulář + Obce z JSON</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
+    html, body { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    #formContainer {
+      padding: 10px;
       background: #f0f0f0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      font-family: sans-serif;
+      max-width: 400px;
     }
-
-    #form {
+    label { display: block; margin-top: 10px; position: relative; }
+    input { width: 100%; padding: 5px; box-sizing: border-box; }
+    button { margin-top: 10px; padding: 10px; width: 100%; cursor: pointer; }
+    #entriesList { max-height: 150px; overflow-y: auto; margin-top: 10px; background: white; padding: 5px; border: 1px solid #ccc; }
+    #map { height: calc(100% - 260px); }
+    .autocomplete-items {
+      position: absolute;
+      border: 1px solid #d4d4d4;
+      border-top: none;
+      z-index: 99;
       background: white;
-      padding: 1em;
-      margin: 1em 0;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      max-width: 800px;
-      width: 90%;
+      max-height: 150px;
+      overflow-y: auto;
+      width: 100%;
     }
-
-    #form label {
-      display: block;
-      margin-top: 0.5em;
+    .autocomplete-items div {
+      padding: 10px;
+      cursor: pointer;
     }
-
-    #map {
-      width: 800px;
-      height: 600px;
-      border: 1px solid #ccc;
-    }
-
-    datalist option {
-      font-size: 14px;
+    .autocomplete-items div:hover {
+      background-color: #e9e9e9;
     }
   </style>
 </head>
 <body>
 
-  <div id="form">
-    <h2>Vlož kuriozitu</h2>
-    <form id="kuriozniForm">
-      <label>Název obce:
-        <input type="text" id="obec" list="obceList" required />
-        <datalist id="obceList"></datalist>
+  <div id="formContainer">
+    <h3>Vlož údaje</h3>
+    <form id="dataForm" autocomplete="off">
+      <label>Délka jazyka (cm):
+        <input type="number" name="delkaJazyka" min="0" step="0.1" required />
       </label>
-
-      <label>Délka jazyka (v metrech):
-        <input type="number" id="jazyk" min="0" step="0.01" />
-      </label>
-
       <label>
-        <input type="checkbox" id="anonymne" />
-        Chci zůstat v anonymitě
+        Obec:
+        <input id="obecInput" type="text" name="obec" required />
+        <div id="autocomplete-list" class="autocomplete-items"></div>
       </label>
-
       <button type="submit">Odeslat</button>
     </form>
+
+    <h4>Zadaná data:</h4>
+    <div id="entriesList"></div>
   </div>
 
   <div id="map"></div>
@@ -72,18 +62,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
   <script>
-    const map = L.map('map', {
-      zoomControl: true,
-      minZoom: 5,
-      maxZoom: 18,
-      maxBounds: [[47.5, 10], [52, 20]],
-      renderer: L.canvas({ padding: 0.8 })
-    }).setView([49.8, 15.5], 7);
+    // --- Mapa ---
+
+    const map = L.map('map').setView([49.8, 15.5], 8);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
-      maxZoom: 19,
-      updateWhenZooming: false
+      maxZoom: 19
     }).addTo(map);
 
     // Maska ČR
@@ -116,22 +101,38 @@
         }).addTo(map);
       });
 
-    let seznamObci = [];
-
-    // Načtení obcí s proxy (kvůli CORS)
-    fetch('https://corsproxy.io/?https://raw.githubusercontent.com/Smradoch84/kraje/main/obce.json')
-      .then(res => res.json())
-      .then(data => {
-        seznamObci = data.features;
-        const obceList = document.getElementById('obceList');
-        seznamObci.forEach(obec => {
-          const option = document.createElement('option');
-          option.value = obec.properties.NAZ_OBEC;
-          obceList.appendChild(option);
-        });
+    // Krajské hranice
+    fetch('https://raw.githubusercontent.com/Smradoch84/kraje/main/cz.json')
+      .then(res => {
+        if (!res.ok) throw new Error('Síťová odpověď nebyla OK');
+        return res.json();
+      })
+      .then(kraje => {
+        L.geoJSON(kraje, {
+          style: {
+            color: '#0074D9',
+            weight: 1.5,
+            fillOpacity: 0.1
+          },
+          onEachFeature: (feature, layer) => {
+            const nazev = feature.properties.name || feature.properties.NAZ_CZNUTS3 || feature.properties.NAZEV || 'Neznámý kraj';
+            layer.on('click', () => {
+              layer.bindPopup(`<strong>${nazev}</strong>`).openPopup();
+            });
+          }
+        }).addTo(map);
+      })
+      .catch(err => {
+        console.error('Chyba při načítání krajů:', err);
+        alert('Chyba při načítání krajů: ' + err.message);
       });
 
-    // Normalizace bez diakritiky
+    // --- Obce ---
+
+    let obce = []; // uložíme zde obecní data z JSON
+    let obceNames = []; // jen jména obcí pro rychlé hledání
+
+    // Normalizace textu (bez diakritiky, velká písmena)
     function normalize(text) {
       return (text || '')
         .normalize("NFD")
@@ -139,39 +140,111 @@
         .toUpperCase();
     }
 
-    document.getElementById('kuriozniForm').addEventListener('submit', function (e) {
+    // Načti obce z githubu přes proxy kvůli CORS
+    fetch('https://corsproxy.io/?https://raw.githubusercontent.com/Smradoch84/kraje/main/obce.json')
+      .then(res => res.json())
+      .then(data => {
+        obce = data.features.map(f => ({
+          name: f.properties.NAZ_OBEC,
+          coords: [f.geometry.coordinates[1], f.geometry.coordinates[0]] // lat,lng
+        }));
+        obceNames = obce.map(o => o.name);
+      })
+      .catch(err => {
+        console.error("Chyba načítání obcí:", err);
+        alert("Nepodařilo se načíst seznam obcí.");
+      });
+
+    // --- Autocomplete ---
+
+    const input = document.getElementById('obecInput');
+    const autocompleteList = document.getElementById('autocomplete-list');
+
+    input.addEventListener('input', function() {
+      const val = normalize(this.value);
+      autocompleteList.innerHTML = '';
+      if (!val) return;
+
+      // Najdi maximálně 20 obcí, které začínají na vstup
+      const matches = obce.filter(o => normalize(o.name).startsWith(val)).slice(0, 20);
+
+      matches.forEach(match => {
+        const item = document.createElement('div');
+        item.textContent = match.name;
+        item.addEventListener('click', () => {
+          input.value = match.name;
+          autocompleteList.innerHTML = '';
+        });
+        autocompleteList.appendChild(item);
+      });
+    });
+
+    // Zavři autocomplete pokud klikneš mimo input
+    document.addEventListener('click', e => {
+      if (e.target !== input) {
+        autocompleteList.innerHTML = '';
+      }
+    });
+
+    // --- Zpracování formuláře ---
+
+    const markersGroup = L.layerGroup().addTo(map);
+    const entries = [];
+    const form = document.getElementById('dataForm');
+    const entriesList = document.getElementById('entriesList');
+
+    form.addEventListener('submit', e => {
       e.preventDefault();
 
-      const obecZadana = document.getElementById('obec').value;
-      const jazyk = document.getElementById('jazyk').value;
-      const anonymne = document.getElementById('anonymne').checked;
+      const formData = new FormData(form);
+      const delkaJazyka = formData.get('delkaJazyka');
+      const obecInput = formData.get('obec');
 
-      const hledanaObec = seznamObci.find(obec =>
-        normalize(obec.properties.NAZ_OBEC) === normalize(obecZadana)
-      );
-
-      if (!hledanaObec) {
-        alert(`Obec "${obecZadana}" nebyla nalezena v databázi.`);
+      // Najdi obec bez ohledu na diakritiku a velikost písmen
+      const obecData = obce.find(o => normalize(o.name) === normalize(obecInput));
+      if (!obecData) {
+        alert('Obec nebyla nalezena v seznamu.');
         return;
       }
 
-      const coords = hledanaObec.geometry.coordinates;
-      if (!coords) {
-        alert("Obec nemá definované souřadnice.");
-        return;
-      }
+      const casVlozeni = new Date().toLocaleString('cs-CZ');
 
-      const lng = coords[0];
-      const lat = coords[1];
+      const entry = {
+        delkaJazyka,
+        obec: obecData.name,
+        casVlozeni,
+        coords: obecData.coords
+      };
 
-      alert(`Kuriozita z obce ${obecZadana} o délce ${jazyk}m byla ${anonymne ? 'anonymně' : 'veřejně'} uložena.`);
+      entries.push(entry);
 
-      L.marker([lat, lng]).addTo(map)
-        .bindPopup(`<strong>${obecZadana}</strong><br>Jazyk: ${jazyk}m`)
-        .openPopup();
+      form.reset();
+      autocompleteList.innerHTML = '';
 
-      map.setView([lat, lng], 10);
+      renderEntries();
+      updateMapMarkers();
+      map.setView(entry.coords, 10);
     });
+
+    function renderEntries() {
+      entriesList.innerHTML = '';
+      entries.forEach(entry => {
+        const div = document.createElement('div');
+        div.innerHTML = `<strong>Obec:</strong> ${entry.obec} <br>
+                         <strong>Délka jazyka:</strong> ${entry.delkaJazyka} cm <br>
+                         <em>Vloženo: ${entry.casVlozeni}</em>`;
+        entriesList.appendChild(div);
+      });
+    }
+
+    function updateMapMarkers() {
+      markersGroup.clearLayers();
+      entries.forEach(entry => {
+        const marker = L.marker(entry.coords).addTo(markersGroup);
+        marker.bindPopup(`<strong>${entry.obec}</strong><br>Délka jazyka: ${entry.delkaJazyka} cm<br><em>Vloženo: ${entry.casVlozeni}</em>`);
+      });
+    }
   </script>
+
 </body>
 </html>
